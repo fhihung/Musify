@@ -1,0 +1,59 @@
+name: musify
+description: Music Streaming app made in Flutter!
+homepage: https://github.com/gokadzev/Musify
+repository: https://github.com/gokadzev/Musify
+issue_tracker: https://github.com/gokadzev/Musify/issues
+
+publish_to: 'none'
+version: 9.6.2+136 # run update.sh after changing the version
+
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+  flutter: ^3.35.2
+
+dependencies:
+  app_links: ^6.4.1
+  audio_service: ^0.18.18
+  audio_session: ^0.2.2
+  cached_network_image: ^3.4.1
+  dynamic_color: ^1.8.1
+  file_picker: ^10.3.2
+  fluentui_system_icons: ^1.1.273
+  flutter:
+    sdk: flutter
+  flutter_flip_card: ^0.0.6
+  flutter_localizations:
+    sdk: flutter
+  go_router: ^16.2.1
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  html: ^0.15.6
+  http: ^1.5.0
+  intl: ^0.20.2
+  just_audio: 0.10.4
+  path_provider: ^2.1.5
+  pocketbase: ^0.23.0
+  rxdart: ^0.28.0
+  shared_preferences: ^2.3.2
+  url_launcher: ^6.3.2
+  youtube_explode_dart: ^2.5.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  translations_cleaner: ^0.0.5
+
+  # flutter_lints: ^2.0.0
+
+flutter:
+  generate: true
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  assets:
+    - assets/licenses/
+
+  fonts:
+    - family: paytoneOne
+      fonts:
+        - asset: fonts/paytone/PaytoneOne-Regular.ttf
