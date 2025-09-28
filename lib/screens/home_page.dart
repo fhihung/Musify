@@ -25,10 +25,10 @@ import 'package:go_router/go_router.dart';
 import 'package:musify/API/musify.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
-import 'package:musify/models/music_genre.dart';
+import 'package:musify/models/gemini_response.dart';
 import 'package:musify/screens/playlist_page.dart';
 import 'package:musify/services/auth_service.dart';
-import 'package:musify/services/music_recommendation_service.dart';
+import 'package:musify/services/gemini_service.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/common_variables.dart';
 import 'package:musify/utilities/utils.dart';
@@ -46,35 +46,31 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final MusicRecommendationService _recommendationService = MusicRecommendationService();
-  List<dynamic>? _personalizedRecommendations;
-  bool _isLoadingRecommendations = false;
+  List<MusicRecommendation>? _geminiRecommendations;
+  bool _isLoadingGeminiRecommendations = false;
   
   @override
   void initState() {
     super.initState();
-    _loadPersonalizedRecommendations();
+    _loadGeminiRecommendations();
   }
   
-  Future<void> _loadPersonalizedRecommendations() async {
+  Future<void> _loadGeminiRecommendations() async {
     if (AuthService.isAuthenticated) {
       setState(() {
-        _isLoadingRecommendations = true;
+        _isLoadingGeminiRecommendations = true;
       });
       
       try {
-        final hasPreferences = await _recommendationService.hasUserSetPreferences();
-        if (hasPreferences) {
-          final recommendations = await _recommendationService.getRecommendedSongs();
-          setState(() {
-            _personalizedRecommendations = recommendations;
-          });
-        }
+        final recommendations = await GeminiService.getMusicRecommendations();
+        setState(() {
+          _geminiRecommendations = recommendations;
+        });
       } catch (e) {
-        logger.log('Error loading personalized recommendations', e, null);
+        logger.log('Error loading Gemini recommendations', e, null);
       } finally {
         setState(() {
-          _isLoadingRecommendations = false;
+          _isLoadingGeminiRecommendations = false;
         });
       }
     }
@@ -147,7 +143,7 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             _buildSuggestedPlaylists(playlistHeight),
-            _buildPersonalizedRecommendations(playlistHeight),
+            _buildGeminiRecommendations(),
             _buildSuggestedPlaylists(playlistHeight, showOnlyLiked: true),
             _buildRecommendedSongsSection(playlistHeight),
           ],
@@ -280,60 +276,146 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildPersonalizedRecommendations(double playlistHeight) {
+  Widget _buildGeminiRecommendations() {
     // Nếu người dùng chưa đăng nhập hoặc không có thể loại nhạc ưa thích, không hiển thị gì
     if (!AuthService.isAuthenticated) {
       return const SizedBox.shrink();
     }
     
     // Nếu đang tải, hiển thị spinner
-    if (_isLoadingRecommendations) {
+    if (_isLoadingGeminiRecommendations) {
       return Column(
         children: [
-          SectionHeader(title: context.l10n?.recommendedForYou ?? 'Đề xuất cho bạn'),
+          SectionHeader(title: 'Gợi ý từ AI'),
           _buildLoadingWidget(),
         ],
       );
     }
     
     // Nếu không có đề xuất, không hiển thị gì
-    if (_personalizedRecommendations == null || _personalizedRecommendations!.isEmpty) {
+    if (_geminiRecommendations == null || _geminiRecommendations!.isEmpty) {
       return const SizedBox.shrink();
     }
     
-    // Hiển thị đề xuất dựa trên thể loại ưa thích
+    // Hiển thị đề xuất từ Gemini AI
     return Column(
       children: [
         SectionHeader(
-          title: context.l10n?.basedOnYourTaste ?? 'Dựa trên sở thích của bạn',
+          title: 'Gợi ý từ AI',
           actionButton: IconButton(
             onPressed: () async {
-              await Future.microtask(
-                () => setActivePlaylist({
-                  'title': context.l10n?.basedOnYourTaste ?? 'Dựa trên sở thích của bạn',
-                  'list': _personalizedRecommendations,
-                }),
-              );
+              await _loadGeminiRecommendations();
             },
             icon: Icon(
-              FluentIcons.play_circle_24_filled,
+              FluentIcons.arrow_clockwise_24_regular,
               color: Theme.of(context).colorScheme.primary,
-              size: 30,
+              size: 24,
             ),
           ),
         ),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const BouncingScrollPhysics(),
-          itemCount: _personalizedRecommendations!.length.clamp(0, 5), // Chỉ hiển thị tối đa 5 bài
-          padding: commonListViewBottmomPadding,
-          itemBuilder: (context, index) {
-            final borderRadius = getItemBorderRadius(index, _personalizedRecommendations!.length.clamp(0, 5));
-            return RepaintBoundary(
-              key: ValueKey('personalized_song_${_personalizedRecommendations![index]['ytid']}'),
-              child: SongBar(_personalizedRecommendations![index], true, borderRadius: borderRadius),
-            );
-          },
+        SizedBox(
+          height: 180,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _geminiRecommendations!.length.clamp(0, 10),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            itemBuilder: (context, index) {
+              final recommendation = _geminiRecommendations![index];
+              return Container(
+                width: 280,
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                child: Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          recommendation.title,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          recommendation.artist,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (recommendation.genre != null) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.secondaryContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              recommendation.genre!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.onSecondaryContainer,
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (recommendation.reason != null) ...[
+                          const SizedBox(height: 6),
+                          Flexible(
+                            child: Text(
+                              recommendation.reason!,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                fontStyle: FontStyle.italic,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                        const Spacer(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            IconButton(
+                              onPressed: () async {
+                                // Tìm kiếm bài hát trên YouTube và phát
+                                final query = '${recommendation.title} ${recommendation.artist}';
+                                final results = await fetchSongsList(query);
+                                if (results.isNotEmpty) {
+                                  await audioHandler.stop();
+                                  await setActivePlaylist({
+                                    'title': 'Gợi ý từ AI',
+                                    'list': results,
+                                  });
+                                  await audioHandler.skipToQueueItem(0);
+                                }
+                              },
+                              icon: Icon(
+                                FluentIcons.play_circle_24_filled,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 24,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ],
     );
