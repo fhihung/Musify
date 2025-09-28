@@ -71,11 +71,11 @@ final audioQualitySetting = ValueNotifier<String>(
 );
 
 Locale languageSetting = getLocaleFromLanguageCode(
-  Hive.box('settings').get('language', defaultValue: 'English') as String,
+  Hive.box('settings').get('language', defaultValue: 'English')?.toString() ?? 'English',
 );
 
 final themeModeSetting =
-    Hive.box('settings').get('themeMode', defaultValue: 'dark') as String;
+    Hive.box('settings').get('themeMode', defaultValue: 'dark')?.toString() ?? 'dark';
 
 Color primaryColorSetting = Color(
   Hive.box('settings').get('accentColor', defaultValue: 0xff91cef4),

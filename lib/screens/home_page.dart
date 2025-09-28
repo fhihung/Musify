@@ -25,8 +25,10 @@ import 'package:go_router/go_router.dart';
 import 'package:musify/API/musify.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
+import 'package:musify/models/music_genre.dart';
 import 'package:musify/screens/playlist_page.dart';
 import 'package:musify/services/auth_service.dart';
+import 'package:musify/services/music_recommendation_service.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/common_variables.dart';
 import 'package:musify/utilities/utils.dart';
@@ -44,6 +46,39 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final MusicRecommendationService _recommendationService = MusicRecommendationService();
+  List<dynamic>? _personalizedRecommendations;
+  bool _isLoadingRecommendations = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadPersonalizedRecommendations();
+  }
+  
+  Future<void> _loadPersonalizedRecommendations() async {
+    if (AuthService.isAuthenticated) {
+      setState(() {
+        _isLoadingRecommendations = true;
+      });
+      
+      try {
+        final hasPreferences = await _recommendationService.hasUserSetPreferences();
+        if (hasPreferences) {
+          final recommendations = await _recommendationService.getRecommendedSongs();
+          setState(() {
+            _personalizedRecommendations = recommendations;
+          });
+        }
+      } catch (e) {
+        logger.log('Error loading personalized recommendations', e, null);
+      } finally {
+        setState(() {
+          _isLoadingRecommendations = false;
+        });
+      }
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final playlistHeight = MediaQuery.sizeOf(context).height * 0.25 / 1.1;
@@ -112,6 +147,7 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             _buildSuggestedPlaylists(playlistHeight),
+            _buildPersonalizedRecommendations(playlistHeight),
             _buildSuggestedPlaylists(playlistHeight, showOnlyLiked: true),
             _buildRecommendedSongsSection(playlistHeight),
           ],
@@ -241,6 +277,65 @@ class _HomePageState extends State<HomePage> {
       children: List.generate(itemCount, (index) {
         return PlaylistCube(playlists[index], size: height * 2);
       }),
+    );
+  }
+
+  Widget _buildPersonalizedRecommendations(double playlistHeight) {
+    // Nếu người dùng chưa đăng nhập hoặc không có thể loại nhạc ưa thích, không hiển thị gì
+    if (!AuthService.isAuthenticated) {
+      return const SizedBox.shrink();
+    }
+    
+    // Nếu đang tải, hiển thị spinner
+    if (_isLoadingRecommendations) {
+      return Column(
+        children: [
+          SectionHeader(title: context.l10n?.recommendedForYou ?? 'Đề xuất cho bạn'),
+          _buildLoadingWidget(),
+        ],
+      );
+    }
+    
+    // Nếu không có đề xuất, không hiển thị gì
+    if (_personalizedRecommendations == null || _personalizedRecommendations!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    // Hiển thị đề xuất dựa trên thể loại ưa thích
+    return Column(
+      children: [
+        SectionHeader(
+          title: context.l10n?.basedOnYourTaste ?? 'Dựa trên sở thích của bạn',
+          actionButton: IconButton(
+            onPressed: () async {
+              await Future.microtask(
+                () => setActivePlaylist({
+                  'title': context.l10n?.basedOnYourTaste ?? 'Dựa trên sở thích của bạn',
+                  'list': _personalizedRecommendations,
+                }),
+              );
+            },
+            icon: Icon(
+              FluentIcons.play_circle_24_filled,
+              color: Theme.of(context).colorScheme.primary,
+              size: 30,
+            ),
+          ),
+        ),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const BouncingScrollPhysics(),
+          itemCount: _personalizedRecommendations!.length.clamp(0, 5), // Chỉ hiển thị tối đa 5 bài
+          padding: commonListViewBottmomPadding,
+          itemBuilder: (context, index) {
+            final borderRadius = getItemBorderRadius(index, _personalizedRecommendations!.length.clamp(0, 5));
+            return RepaintBoundary(
+              key: ValueKey('personalized_song_${_personalizedRecommendations![index]['ytid']}'),
+              child: SongBar(_personalizedRecommendations![index], true, borderRadius: borderRadius),
+            );
+          },
+        ),
+      ],
     );
   }
 

@@ -30,6 +30,7 @@ import 'package:musify/screens/auth/login_screen.dart';
 import 'package:musify/screens/auth/profile_screen.dart';
 import 'package:musify/screens/auth/register_screen.dart';
 import 'package:musify/screens/bottom_navigation_page.dart';
+import 'package:musify/screens/genre_selection_screen.dart';
 import 'package:musify/screens/home_page.dart';
 import 'package:musify/screens/library_page.dart';
 import 'package:musify/screens/search_page.dart';
@@ -81,6 +82,16 @@ class NavigationManager {
         path: '/cloud-backup',
         pageBuilder: (context, state) {
           return getPage(child: const CloudBackupScreen(), state: state);
+        },
+      ),
+      GoRoute(
+        path: '/genre-selection',
+        pageBuilder: (context, state) {
+          final isFirstSetup = state.uri.queryParameters['first_setup'] == 'true';
+          return getPage(
+            child: GenreSelectionScreen(isFirstSetup: isFirstSetup),
+            state: state,
+          );
         },
       ),
     ];

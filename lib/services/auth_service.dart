@@ -25,6 +25,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:musify/main.dart';
+import 'package:musify/models/music_genre.dart';
+import 'package:musify/utilities/music_genres.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -115,6 +117,9 @@ class AuthService {
       if (authResult.success) {
         await _createUserProfile();
         await _syncUserProfile();
+        
+        // Kiểm tra và xử lý thể loại nhạc yêu thích sau khi đăng ký
+        await _handleMusicPreferencesAfterLogin();
       }
 
       return authResult;
@@ -136,6 +141,9 @@ class AuthService {
 
       await _syncUserProfile();
       await _updateLastLogin();
+      
+      // Kiểm tra và xử lý thể loại nhạc yêu thích sau khi đăng nhập
+      await _handleMusicPreferencesAfterLogin();
 
       return AuthResult(success: true, user: authData.record);
     } catch (e) {
@@ -199,6 +207,8 @@ class AuthService {
         'lastLogin': userData['lastLogin'],
         'verified': userData['verified'],
         'lastSyncTime': DateTime.now().toIso8601String(),
+        // Lấy thể loại nhạc ưa thích nếu có
+        'musicPreferences': userData['musicPreferences'] ?? {},
       });
 
       // Also sync to SharedPreferences for consistent access
@@ -226,6 +236,11 @@ class AuthService {
       await prefs.setBool('current_user_verified', userData['verified'] ?? false);
       await prefs.setString('current_user_created', userData['created'] ?? '');
       await prefs.setString('sync_timestamp', DateTime.now().toIso8601String());
+      
+      // Lưu thông tin về thể loại nhạc ưa thích
+      if (userData['musicPreferences'] != null) {
+        await prefs.setString('music_preferences', jsonEncode(userData['musicPreferences']));
+      }
 
       logger.log('User data synced to SharedPreferences', null, null);
     } catch (e) {
@@ -247,6 +262,10 @@ class AuthService {
           'language': 'auto',
           'notifications': true,
           'autoBackup': true,
+        },
+        'musicPreferences': {
+          'favoriteGenres': [],
+          'lastUpdated': DateTime.now().toIso8601String(),
         },
       });
 
@@ -309,6 +328,7 @@ class AuthService {
       await prefs.remove('current_user_verified');
       await prefs.remove('current_user_created');
       await prefs.remove('sync_timestamp');
+      await prefs.remove('music_preferences');
 
       logger.log('User data cleared from SharedPreferences', null, null);
     } catch (e) {
@@ -348,6 +368,7 @@ class AuthService {
   static Future<AuthResult> updateProfile({
     String? name,
     String? username,
+    UserMusicPreferences? musicPreferences,
   }) async {
     try {
       if (!isAuthenticated || currentUser.value == null) {
@@ -357,6 +378,9 @@ class AuthService {
       final updateData = <String, dynamic>{};
       if (name != null) updateData['name'] = name;
       if (username != null) updateData['username'] = username;
+      if (musicPreferences != null) {
+        updateData['musicPreferences'] = musicPreferences.toMap();
+      }
 
       if (updateData.isEmpty) {
         return AuthResult(success: true);
@@ -441,6 +465,280 @@ class AuthService {
   static void dispose() {
     _authStateController.close();
   }
+  
+  // Các phương thức quản lý thể loại nhạc ưa thích
+  static Future<UserMusicPreferences?> getUserMusicPreferences() async {
+    try {
+      if (!isAuthenticated) return null;
+      
+      // // Thử lấy từ local cache trước
+      final userBox = await Hive.openBox('user');
+      // final musicPrefsMap = userBox.get('musicPreferences');
+      
+      // // Kiểm tra nếu có dữ liệu local và không empty
+      // if (musicPrefsMap != null && musicPrefsMap.isNotEmpty) {
+      //   final prefs = UserMusicPreferences.fromMap(Map<String, dynamic>.from(musicPrefsMap));
+      //   // Kiểm tra thêm xem có thể loại nào không
+      //   if (prefs.favoriteGenres.isNotEmpty) {
+      //     return prefs;
+      //   }
+      // }
+      
+      // Nếu không có trong cache, lấy từ server
+      try {
+        final userId = currentUser.value?.id;
+        if (userId == null) return null;
+        
+        // Đảm bảo token xác thực hợp lệ
+        if (!_pb.authStore.isValid) {
+          // Thử refresh token nếu cần
+          await _pb.collection('users').authRefresh();
+        }
+        
+        // Thêm header xác thực rõ ràng
+        final headers = {
+          'Authorization': _pb.authStore.token
+        };
+        
+        final result = await _pb.collection('user_backups').getList(
+          headers: headers
+        );
+        
+        if (result.items.isNotEmpty) {
+          final backupData = result.items[0].data;
+          // Lấy dữ liệu từ cấu trúc mới (user.musicPreferences)
+          if (backupData['user'] != null && 
+              backupData['user'] is Map && 
+              (backupData['user'] as Map).containsKey('musicPreferences')) {
+            
+            final userData = Map<String, dynamic>.from(backupData['user']);
+            final musicPrefsData = Map<String, dynamic>.from(userData['musicPreferences']);
+            
+            final prefs = UserMusicPreferences.fromMap(musicPrefsData);
+            
+            // Lưu vào cache
+            await userBox.put('musicPreferences', prefs.toMap());
+            return prefs;
+          }
+        }
+      } catch (serverError) {
+        logger.log('Failed to get music preferences from server', serverError, null);
+      }
+      
+      return null;
+    } catch (e) {
+      logger.log('Failed to get user music preferences', e, null);
+      return null;
+    }
+  }
+  
+  static Future<AuthResult> updateUserMusicPreferences(List<String> genreIds) async {
+    try {
+      if (!isAuthenticated) {
+        return AuthResult(success: false, error: 'Chưa đăng nhập');
+      }
+      
+      final userId = currentUser.value?.id;
+      if (userId == null) {
+        return AuthResult(success: false, error: 'Không tìm thấy ID người dùng');
+      }
+      
+      final genres = getGenresByIds(genreIds);
+      final musicPreferences = UserMusicPreferences(
+        favoriteGenres: genres,
+        lastUpdated: DateTime.now(),
+      );
+      
+      // Lưu vào local storage trước
+      final userBox = await Hive.openBox('user');
+      await userBox.put('musicPreferences', musicPreferences.toMap());
+      
+      // Kiểm tra xem đã có bản ghi user_backups chưa
+      try {
+        // Đảm bảo token xác thực hợp lệ
+        if (!_pb.authStore.isValid) {
+          // Thử refresh token nếu cần
+          await _pb.collection('users').authRefresh();
+        }
+        
+        // Thêm header xác thực rõ ràng
+        final headers = {
+          'Authorization': _pb.authStore.token
+        };
+        
+        final result = await _pb.collection('user_backups').getList(
+          page: 1, 
+          perPage: 1, 
+          filter: 'user="$userId"',
+          headers: headers
+        );
+        
+        if (result.items.isNotEmpty) {
+          // Cập nhật bản ghi hiện có
+          final backupId = result.items[0].id;
+          // Lấy dữ liệu hiện tại để cập nhật
+          final backupData = result.items[0].data;
+          
+          // Tạo cấu trúc dữ liệu phù hợp với schema server
+          Map<String, dynamic> userData = backupData['user'] != null ? 
+              Map<String, dynamic>.from(backupData['user']) : {};
+              
+          // Cập nhật musicPreferences trong userData
+          userData['musicPreferences'] = musicPreferences.toMap();
+          
+          // Cập nhật lastSyncTime
+          userData['lastSyncTime'] = DateTime.now().toIso8601String();
+          
+          // Đảm bảo token xác thực hợp lệ trước khi cập nhật
+          if (!_pb.authStore.isValid) {
+            await _pb.collection('users').authRefresh();
+          }
+          
+          // Thêm header xác thực rõ ràng
+          final updateHeaders = {
+            'Authorization': _pb.authStore.token
+          };
+          
+          // Cập nhật bản ghi
+          await _pb.collection('user_backups').update(
+            backupId, 
+            body: {
+              'user': userData
+            },
+            headers: updateHeaders
+          );
+        } else {
+          // Tạo mới bản ghi
+          // Tạo cấu trúc dữ liệu phù hợp với schema server
+          Map<String, dynamic> userData = {
+            'userId': userId,
+            'username': currentUser.value?.data['username'] ?? '',
+            'name': currentUser.value?.data['name'] ?? '',
+            'email': currentUser.value?.data['email'] ?? '',
+            'avatar': currentUser.value?.data['avatar'] ?? '',
+            'verified': currentUser.value?.data['verified'] ?? false,
+            'created': currentUser.value?.data['created'] ?? '',
+            'lastSyncTime': DateTime.now().toIso8601String(),
+            'musicPreferences': musicPreferences.toMap()
+          };
+          
+          // Đảm bảo token xác thực hợp lệ trước khi tạo mới
+          if (!_pb.authStore.isValid) {
+            await _pb.collection('users').authRefresh();
+          }
+          
+          // Thêm header xác thực rõ ràng
+          final createHeaders = {
+            'Authorization': _pb.authStore.token
+          };
+          
+          // Tạo bản ghi mới với cấu trúc đúng
+          await _pb.collection('user_backups').create(
+            body: {
+              'user': userData,
+              'settings': {},
+              'playlists': {
+                'customPlaylists': [],
+                'likedSongs': [],
+                'likedPlaylists': [],
+                'userPlaylists': [],
+                'recentlyPlayedSongs': [],
+                'mostPlayedSongs': [],
+                'offlineSongs': [],
+                'downloadedSongs': []
+              },
+              'metadata': {
+                'timestamp': DateTime.now().toIso8601String(),
+                'deviceInfo': {
+                  'platform': 'flutter',
+                  'timestamp': DateTime.now().toIso8601String()
+                },
+                'appVersion': '9.6.2',
+                'backupVersion': '2.0'
+              }
+            },
+            headers: createHeaders
+          );
+        }
+        
+        return AuthResult(success: true);
+      } catch (serverError) {
+        logger.log('Failed to update music preferences on server', serverError, null);
+        // Vẫn trả về success vì đã lưu được local
+        return AuthResult(
+          success: true, 
+          message: 'Đã lưu thành công trên thiết bị, nhưng chưa đồng bộ được lên server'
+        );
+      }
+    } catch (e) {
+      logger.log('Failed to update user music preferences', e, null);
+      return AuthResult(success: false, error: _parseError(e.toString()));
+    }
+  }
+  
+  static Future<List<String>> getFavoriteGenreIds() async {
+    final prefs = await getUserMusicPreferences();
+    if (prefs == null) return [];
+    
+    return prefs.favoriteGenres.map((genre) => genre.id).toList();
+  }
+  
+  // Phương thức xử lý thể loại nhạc yêu thích sau khi đăng nhập
+  static Future<void> _handleMusicPreferencesAfterLogin() async {
+    try {
+      if (!isAuthenticated) return;
+      
+      // Lấy thể loại nhạc yêu thích từ server
+      final musicPrefs = await getUserMusicPreferences();
+      
+      if (musicPrefs == null || musicPrefs.favoriteGenres.isEmpty) {
+        // Nếu chưa có thể loại nhạc yêu thích, đánh dấu cần mở màn hình chọn thể loại
+        await _setNeedsGenreSelection(true);
+        logger.log('User needs to select music genres', null, null);
+      } else {
+        // Nếu đã có thể loại nhạc yêu thích, cập nhật vào local cache
+        final userBox = await Hive.openBox('user');
+        await userBox.put('musicPreferences', musicPrefs.toMap());
+        await _setNeedsGenreSelection(false);
+        logger.log('Music preferences loaded and cached locally', null, null);
+      }
+    } catch (e) {
+      logger.log('Failed to handle music preferences after login', e, null);
+      // Trong trường hợp lỗi, đánh dấu cần chọn thể loại để đảm bảo UX
+      await _setNeedsGenreSelection(true);
+    }
+  }
+  
+  // Đánh dấu người dùng có cần chọn thể loại nhạc không
+  static Future<void> _setNeedsGenreSelection(bool needsSelection) async {
+    try {
+      final userBox = await Hive.openBox('user');
+      await userBox.put('needsGenreSelection', needsSelection);
+    } catch (e) {
+      logger.log('Failed to set needs genre selection flag', e, null);
+    }
+  }
+  
+  // Kiểm tra xem người dùng có cần chọn thể loại nhạc không
+  static Future<bool> needsGenreSelection() async {
+    try {
+      final userBox = await Hive.openBox('user');
+      return userBox.get('needsGenreSelection', defaultValue: false) as bool;
+    } catch (e) {
+      logger.log('Failed to check needs genre selection', e, null);
+      return false;
+    }
+  }
+  
+  // Xóa flag cần chọn thể loại sau khi người dùng đã chọn xong
+  static Future<void> clearGenreSelectionFlag() async {
+    try {
+      final userBox = await Hive.openBox('user');
+      await userBox.delete('needsGenreSelection');
+    } catch (e) {
+      logger.log('Failed to clear genre selection flag', e, null);
+    }
+  }
 }
 
 // Custom AuthStore for persistent authentication with SharedPreferences
@@ -517,34 +815,15 @@ class _PersistentAuthStore extends AuthStore {
     await _prefs.remove(_lastLoginKey);
   }
 
-  // Helper methods to get user info directly from SharedPreferences
-  static Future<String?> getStoredUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_userIdKey);
-  }
-
-  static Future<String?> getStoredUserEmail() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_userEmailKey);
-  }
-
-  static Future<String?> getStoredUserName() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_userNameKey);
-  }
-
-  static Future<bool> hasStoredAuth() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.containsKey(_tokenKey) && prefs.containsKey(_recordKey);
-  }
-
-  // Public helper method to check if user is logged in via SharedPreferences
+  // Helper method to check if user is logged in via SharedPreferences
+  // This method is used by other parts of the app
+  @pragma('vm:entry-point') // Đánh dấu để compiler biết phương thức này được sử dụng
   static Future<Map<String, dynamic>?> getStoredUserInfo() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (!prefs.containsKey('current_user_id')) return null;
 
-      return {
+      final Map<String, dynamic> userInfo = {
         'id': prefs.getString('current_user_id'),
         'email': prefs.getString('current_user_email'),
         'name': prefs.getString('current_user_name'),
@@ -554,6 +833,14 @@ class _PersistentAuthStore extends AuthStore {
         'created': prefs.getString('current_user_created'),
         'syncTime': prefs.getString('sync_timestamp'),
       };
+      
+      // Thêm thông tin về thể loại nhạc ưa thích nếu có
+      final String? musicPrefsJson = prefs.getString('music_preferences');
+      if (musicPrefsJson != null) {
+        userInfo['musicPreferences'] = jsonDecode(musicPrefsJson);
+      }
+      
+      return userInfo;
     } catch (e) {
       logger.log('Failed to get stored user info', e, null);
       return null;

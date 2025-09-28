@@ -1,1 +1,232 @@
-{}
+{
+  "ar": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "de": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "el": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "es": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "et": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "fr": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "he": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "hi": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "hu": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "id": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "it": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "ja": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "ko": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "pl": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "pt": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "ru": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "sv": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "tr": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "uk": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "zh": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ],
+
+  "zh_Hant": [
+    "basedOnYourTaste",
+    "loginSuccessful",
+    "maxGenresSelected",
+    "registerSuccessful",
+    "save",
+    "savedSuccessfully",
+    "selectFavoriteGenres",
+    "selectUpToFiveGenres"
+  ]
+}

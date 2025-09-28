@@ -22,7 +22,9 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:musify/extensions/l10n.dart';
 import 'package:musify/services/auth_service.dart';
+import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/widgets/spinner.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -72,7 +74,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
 
       if (result.success) {
-        context.go('/settings');
+        showToast(context, context.l10n?.registerSuccessful ?? 'Đăng ký thành công');
+        
+        // Kiểm tra xem người dùng có cần chọn thể loại nhạc không
+        final needsGenreSelection = await AuthService.needsGenreSelection();
+        if (needsGenreSelection) {
+          // Nếu cần chọn thể loại, chuyển đến màn hình chọn thể loại
+          if (mounted) {
+            context.go('/genre-selection?first_setup=true');
+          }
+        } else {
+          // Nếu không cần (trường hợp hiếm), chuyển đến trang chính
+          if (mounted) {
+            context.go('/settings');
+          }
+        }
       } else {
         setState(() {
           _errorMessage = result.error ?? 'Đăng ký thất bại';
