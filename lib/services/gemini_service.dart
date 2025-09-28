@@ -17,9 +17,10 @@ class GeminiService {
       // Lấy thể loại nhạc yêu thích từ local storage 
       final favoriteGenres = await _getFavoriteGenres();
       
+      // Nếu không có dữ liệu cá nhân, sử dụng gợi ý mặc định
       if (recentlyPlayedSongs.isEmpty && favoriteGenres.isEmpty) {
-        log('Không có dữ liệu để tạo gợi ý nhạc');
-        return [];
+        log('Không có dữ liệu cá nhân, sử dụng gợi ý mặc định');
+        return _getDefaultRecommendations();
       }
       
       // Tạo prompt cho Gemini
@@ -35,10 +36,10 @@ class GeminiService {
         return _parseMusicRecommendations(text);
       }
       
-      return [];
+      return _getDefaultRecommendations();
     } catch (e) {
       log('Lỗi khi lấy gợi ý nhạc từ Gemini: $e');
-      return [];
+      return _getDefaultRecommendations();
     }
   }
   
@@ -259,6 +260,72 @@ class GeminiService {
     }
   }
   
+  /// Lấy gợi ý nhạc mặc định khi không có dữ liệu cá nhân
+  static List<MusicRecommendation> _getDefaultRecommendations() {
+    return [
+      MusicRecommendation(
+        title: 'Blinding Lights',
+        artist: 'The Weeknd',
+        genre: 'Pop',
+        reason: 'Bài hát hot nhất thế giới trong những năm gần đây',
+      ),
+      MusicRecommendation(
+        title: 'Shape of You',
+        artist: 'Ed Sheeran',
+        genre: 'Pop',
+        reason: 'Một trong những bài hát được yêu thích nhất mọi thời đại',
+      ),
+      MusicRecommendation(
+        title: 'Bohemian Rhapsody',
+        artist: 'Queen',
+        genre: 'Rock',
+        reason: 'Kiệt tác rock kinh điển của Queen',
+      ),
+      MusicRecommendation(
+        title: 'Someone Like You',
+        artist: 'Adele',
+        genre: 'Pop Ballad',
+        reason: 'Ballad cảm động và nổi tiếng của Adele',
+      ),
+      MusicRecommendation(
+        title: 'Imagine',
+        artist: 'John Lennon',
+        genre: 'Classic Rock',
+        reason: 'Bài hát hòa bình nổi tiếng nhất mọi thời đại',
+      ),
+      MusicRecommendation(
+        title: 'Billie Jean',
+        artist: 'Michael Jackson',
+        genre: 'Pop',
+        reason: 'Siêu phẩm của ông hoàng nhạc pop Michael Jackson',
+      ),
+      MusicRecommendation(
+        title: 'Hotel California',
+        artist: 'Eagles',
+        genre: 'Rock',
+        reason: 'Bài hát rock kinh điển với guitar solo huyền thoại',
+      ),
+      MusicRecommendation(
+        title: 'Yesterday',
+        artist: 'The Beatles',
+        genre: 'Classic Pop',
+        reason: 'Tác phẩm bất hủ của The Beatles',
+      ),
+      MusicRecommendation(
+        title: 'Thinking Out Loud',
+        artist: 'Ed Sheeran',
+        genre: 'Pop Romance',
+        reason: 'Bài hát tình yêu ngọt ngào và lãng mạn',
+      ),
+      MusicRecommendation(
+        title: 'Perfect',
+        artist: 'Ed Sheeran',
+        genre: 'Pop Romance',
+        reason: 'Một trong những bài hát cưới phổ biến nhất',
+      ),
+    ];
+  }
+
   /// Test method để kiểm tra kết nối Gemini API
   static Future<bool> testConnection() async {
     try {

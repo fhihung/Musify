@@ -56,23 +56,21 @@ class _HomePageState extends State<HomePage> {
   }
   
   Future<void> _loadGeminiRecommendations() async {
-    if (AuthService.isAuthenticated) {
+    setState(() {
+      _isLoadingGeminiRecommendations = true;
+    });
+    
+    try {
+      final recommendations = await GeminiService.getMusicRecommendations();
       setState(() {
-        _isLoadingGeminiRecommendations = true;
+        _geminiRecommendations = recommendations;
       });
-      
-      try {
-        final recommendations = await GeminiService.getMusicRecommendations();
-        setState(() {
-          _geminiRecommendations = recommendations;
-        });
-      } catch (e) {
-        logger.log('Error loading Gemini recommendations', e, null);
-      } finally {
-        setState(() {
-          _isLoadingGeminiRecommendations = false;
-        });
-      }
+    } catch (e) {
+      logger.log('Error loading Gemini recommendations', e, null);
+    } finally {
+      setState(() {
+        _isLoadingGeminiRecommendations = false;
+      });
     }
   }
   @override
@@ -277,11 +275,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildGeminiRecommendations() {
-    // Nếu người dùng chưa đăng nhập hoặc không có thể loại nhạc ưa thích, không hiển thị gì
-    if (!AuthService.isAuthenticated) {
-      return const SizedBox.shrink();
-    }
-    
     // Nếu đang tải, hiển thị spinner
     if (_isLoadingGeminiRecommendations) {
       return Column(
